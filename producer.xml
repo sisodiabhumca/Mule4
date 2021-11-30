@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:apachekafka="http://www.mulesoft.org/schema/mule/apachekafka" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/apachekafka http://www.mulesoft.org/schema/mule/apachekafka/current/mule-apachekafka.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfdc/current/mule-sfdc.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+    <flow name="producerFlow">
+        <apachekafka:consumer config-ref="Apache_Kafka__Configuration" topic="edss_cm_dl_project" partitions="4" doc:name="Apache Kafka (Streaming)"/>
+        <logger message="consume #[payload]" level="INFO" doc:name="Logger"/>
+    </flow>
+    <flow name="producer-project">
+        <sfdc:replay-topic config-ref="Salesforce__Basic_Authentication_1" topic="FFPSAProjTopic" replayOption="ONLY_NEW" replayId="-1" autoReplay="true" doc:name="Salesforce (Streaming)"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload]]></dw:set-payload>
+        </dw:transform-message>
+        <set-variable variableName="key" value="#[json:Id]" doc:name="Variable"/>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+        <apachekafka:producer config-ref="Apache_Kafka__Configuration" topic="edss_cm_dl_project" key="#[flowVars.key]" reuseProducer="true" doc:name="Apache Kafka"/>
+    </flow>
+</mule>
